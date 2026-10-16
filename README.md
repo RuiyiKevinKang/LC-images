@@ -2,7 +2,7 @@
 
 将液晶信息 **G(x,y,t)** 和随机运动概率 **P(x,y,t)** 导入浏览器，按原始 Python 算法计算映射矩阵 **A**，查看验证结果并下载矩阵与报告。界面为中文，静态网站可部署到独立的 GitHub Pages 网址；无需 ChatGPT 或后端服务器。
 
-公共源码仓库：[RuiyiKevinKang/LC-images](https://github.com/RuiyiKevinKang/LC-images)。GitHub Pages 部署正在准备，预计网址为 `https://ruiyikevinkang.github.io/LC-images/`，是否上线以实际部署成功状态为准。项目自有代码使用 MIT 许可；第三方运行环境保留各自许可，见 [THIRD_PARTY.md](THIRD_PARTY.md)。网站内提供源码下载，部署流程会自动更新该压缩包。
+在线使用：[LC Mapping Lab](https://ruiyikevinkang.github.io/LC-images/)。公共源码仓库：[RuiyiKevinKang/LC-images](https://github.com/RuiyiKevinKang/LC-images)。项目自有代码使用 MIT 许可；第三方运行环境保留各自许可，见 [THIRD_PARTY.md](THIRD_PARTY.md)。网站内提供源码下载，部署流程会自动更新该压缩包。
 
 ## 使用
 
@@ -112,4 +112,4 @@ python -m pip install -r requirements.txt
 python -m unittest discover -s tests -v
 ```
 
-这些测试验证 Python 适配与求解逻辑；浏览器运行环境加载及线上部署仍需在相应环境实际检查。
+2026-10-16 验证：11 项集成测试通过；浏览器同源运行环境加载、XLSX 演示求解及 ZIP 下载通过。8 帧演示得到 A=(9,36)、rank(A)=8，最大拟合误差约 2.6×10⁻¹⁵，概率和最大误差约 1.1×10⁻¹⁵。GitHub Pages 首次部署成功，公开网址返回 HTTP 200。不同设备和输入的结果仍须依据每次检验报告判断。
