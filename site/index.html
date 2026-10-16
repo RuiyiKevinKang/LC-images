@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="LC Mapping Lab：从液晶绿色通道 G 和随机运动概率 P 求解映射矩阵。支持 XLSX、CSV、JSON、NPY、NPZ，浏览器内计算。">
+  <title>LC Mapping Lab · 液晶概率映射工作台</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<aside class="sidebar">
+  <a class="brand" href="#workspace" aria-label="LC Mapping Lab 首页"><span class="brand-icon">L<span>↗</span></span><span>LC Mapping<span class="brand-sub">RESEARCH WORKSPACE</span></span></a>
+  <div class="nav-label">工作空间</div>
+  <nav><a class="active" href="#workspace"><span>▦</span>映射求解</a><a href="#formats"><span>↥</span>输入格式</a><a href="#method"><span>∿</span>算法说明</a></nav>
+  <div class="sidebar-note"><span class="small-dot"></span> 在你的浏览器中计算<p>实验数据保留在当前设备。<br>无需账号，无需上传至服务器。</p></div>
+  <a class="source-link" href="source.zip" download>↗ 下载开源代码 <span>MIT</span></a>
+  <div class="side-version">LC Mapping Lab <span>v1.0</span></div>
+</aside>
+<div class="page">
+  <header class="topbar"><div>工作空间 <span>/</span> <strong>映射求解</strong></div><span class="engine-state" id="engineState"><i></i>计算引擎按需加载</span></header>
+  <main id="workspace">
+    <div class="page-heading"><div><div class="eyebrow">G → P / MATRIX SOLVER</div><h1>让实验数据，连接概率空间。</h1><p>导入液晶信息 G(x,y,t) 与概率信息 P(x,y,t)，求解、检验并导出映射矩阵。</p></div><button id="demoBtn" class="button secondary">◷ 载入演示数据</button></div>
+    <div class="flow"><span><b>01</b>导入数据</span><i></i><span><b>02</b>设置与求解</span><i></i><span><b>03</b>检验与导出</span><div class="flow-right">SVD 伪逆 <span>·</span> Float64</div></div>
+    <section class="input-grid" aria-label="输入数据">
+      <article class="card upload-card"><div class="card-heading"><div class="letter green">G</div><div><h2>液晶信息</h2><p>绿色通道 · G(x,y,t)</p></div><span class="badge" id="gBadge">待导入</span></div>
+        <label class="dropzone" id="gDrop"><input id="gFile" type="file" accept=".xlsx,.csv,.tsv,.json,.npy,.npz" aria-label="选择 G 液晶数据文件"><span class="upload-icon">↥</span><strong id="gName">点击选择或拖入 G 文件</strong><span id="gInfo">XLSX / CSV / TSV / JSON / NPY / NPZ · 最大 40 MB</span></label>
+        <div class="upload-footer"><span>支持像素坐标、图像序列与已分箱数据</span><button class="text-button templateBtn" data-role="G">下载模板 ↓</button></div>
+      </article>
+      <article class="card upload-card"><div class="card-heading"><div class="letter blue">P</div><div><h2>随机运动概率</h2><p>目标分布 · P(x,y,t)</p></div><span class="badge" id="pBadge">待导入</span></div>
+        <label class="dropzone" id="pDrop"><input id="pFile" type="file" accept=".xlsx,.csv,.tsv,.json,.npy,.npz" aria-label="选择 P 概率数据文件"><span class="upload-icon">↥</span><strong id="pName">点击选择或拖入 P 文件</strong><span id="pInfo">每帧非负，概率质量总和为 1</span></label>
+        <div class="upload-footer"><span>支持概率质量或带网格面积的概率密度</span><button class="text-button templateBtn" data-role="P">下载模板 ↓</button></div>
+      </article>
+    </section>
+    <section class="card settings-card"><div class="section-title"><h2><span class="section-number">02</span> 求解设置</h2><span>保留原始求解方法</span></div>
+      <form id="settingsForm"><div class="settings-grid">
+        <label>空间分箱宽度 <span class="field-unit">与 x、y 同单位</span><input id="binWidth" type="number" min="0.000001" step="any" value="16" required><small>每个分箱取有效像素均值</small></label>
+        <label>时间对齐方式<select id="timeAlign"><option value="auto">自动识别</option><option value="frame">按帧序匹配</option><option value="exact">严格匹配物理时间</option><option value="linear">对 P 线性插值</option></select><small>自动模式要求两侧时间类型一致</small></label>
+        <label>P 的数值类型<select id="targetKind"><option value="auto">使用文件声明 / 默认概率质量</option><option value="mass">概率质量 mass</option><option value="density">概率密度 density</option></select><small>密度输入须明确提供网格面积</small></label>
+        <label>视频序号<input id="videoIndex" type="number" min="1" step="1" value="1" required><small>多组 G 数据从 1 开始选择</small></label>
+      </div>
+      <details class="advanced"><summary>高级选项 <span>秩约束、网格面积与验收阈值</span></summary><div class="settings-grid advanced-grid">
+        <label>要求 A 的秩（可选）<input id="requiredRank" type="number" min="1" step="1" placeholder="仅记录实际秩"></label>
+        <label>网格面积（可选）<input id="cellArea" type="number" min="0.000000001" step="any" placeholder="文件内面积优先，留空不覆盖"><small>可用正标量覆盖文件中的面积</small></label>
+        <label>最大拟合误差<input id="maxFit" type="number" value="1e-10" min="1e-16" step="any" required></label>
+        <label>最大概率和误差<input id="maxMass" type="number" value="1e-10" min="1e-16" step="any" required></label>
+      </div></details>
+      <div class="solve-footer"><label class="checkbox"><input id="normalize" type="checkbox"><span>对每帧 P 显式归一化 <small>仅在你希望按输入区域总质量归一化时开启</small></span></label><div class="solve-actions"><button type="button" id="cancelBtn" class="button secondary" hidden>取消计算</button><button type="submit" id="solveBtn" class="button primary">求解映射矩阵 <span>→</span></button></div></div></form>
+    </section>
+    <div id="message" class="message" role="status" aria-live="polite" hidden></div>
+    <section class="results" id="results" aria-label="求解结果"><div class="results-heading"><div><h2><span class="section-number">03</span> 求解结果 <span id="resultStatus" class="badge">等待计算</span></h2><p id="resultSubtitle">完成求解后，查看映射矩阵、概率重建与数值检验。</p></div><button class="button secondary" id="exportBtn" disabled>↓ 下载完整结果</button></div>
+      <div class="metric-grid"><div class="metric"><span>映射矩阵维度</span><strong id="metricShape">— <em>×</em> —</strong><small>A = L · R</small></div><div class="metric"><span>矩阵实际秩</span><strong id="metricRank">—</strong><small id="rankNote">要求 F 满行秩</small></div><div class="metric"><span>最大拟合误差</span><strong id="metricFit">—</strong><small>max |P̂ − P|</small></div><div class="metric"><span>概率和最大误差</span><strong id="metricMass">—</strong><small>max |Σ P̂ − 1|</small></div></div>
+      <div class="card result-card"><div class="result-toolbar"><div class="tabs" role="tablist" aria-label="结果视图"><button class="tab active" id="tab-matrix" role="tab" aria-controls="panel-matrix" aria-selected="true" data-tab="matrix">映射矩阵</button><button class="tab" id="tab-probability" role="tab" aria-controls="panel-probability" aria-selected="false" data-tab="probability">概率重建</button><button class="tab" id="tab-report" role="tab" aria-controls="panel-report" aria-selected="false" data-tab="report">检验报告</button></div><span class="preview-note" id="previewNote">计算完成后可预览</span></div>
+        <div id="emptyResult" class="empty-result"><div class="empty-matrix" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><h3>你的映射矩阵将在这里呈现</h3><p>导入两组数据开始求解，或载入演示数据体验完整流程。</p><span>G → 空间分箱 → 三帧历史特征 F → 映射 A → P</span></div>
+        <div id="panel-matrix" class="result-panel" role="tabpanel" aria-labelledby="tab-matrix" hidden><div class="matrix-layout"><div class="canvas-wrap"><canvas id="matrixCanvas" width="900" height="380" aria-label="映射矩阵热图"></canvas></div><aside class="matrix-details"><div class="eyebrow">MAPPING MATRIX</div><h3>A <span>= L · R</span></h3><p>行对应活动概率网格，列对应当前、前 1、前 2 帧的分箱特征。</p><div class="color-scale"></div><div class="scale-labels"><span id="scaleMin">0</span><span>0</span><span id="scaleMax">0</span></div><small>蓝色为负，暖色为正。A 的元素可以为负。</small><div id="matrixDownloads" class="download-links"></div></aside></div></div>
+        <div id="panel-probability" class="result-panel" role="tabpanel" aria-labelledby="tab-probability" hidden><div class="prob-heading"><div><h3>输入概率与重建概率</h3><p>按原始网格顺序展示第 1 帧（含恒零网格），最多 256 项。</p></div><div class="legend"><span class="legend-blue">目标 P</span><span class="legend-green">重建 P̂</span></div></div><canvas id="probCanvas" width="1100" height="300" aria-label="首帧目标概率与重建概率对比"></canvas><p class="figure-caption">仅用于已输入帧的插值检验；对新帧的概率性质不作保证。</p><div id="predictionDownloads" class="download-links horizontal"></div></div>
+        <div id="panel-report" class="result-panel" role="tabpanel" aria-labelledby="tab-report" hidden><div id="reportContent"></div><div id="reportDownloads" class="download-links horizontal"></div></div>
+      </div>
+      <p class="result-footnote">原算法要求 rank(F) = T。网站不会通过回归或额外升秩绕过不可解条件；完整结果包含活动网格与特征顺序。</p>
+    </section>
+    <section id="formats" class="docs-section"><div class="eyebrow">DATA GUIDE</div><h2>从你已有的数据开始。</h2><div class="guide-grid"><article class="card guide-card"><h3>XLSX / CSV / TSV</h3><p>推荐使用带坐标的长表，每一行是一帧中的一个网格。</p><pre>t,x,y,G<br>0,0,0,121.5<br>0,16,0,118.2<br>1,0,0,123.0<br>1,16,0,119.1</pre><p>P 文件将最后一列改为 <code>P</code>。每帧坐标须完整、固定且不重复。XLSX 首个工作表为数据，另可用 metadata 表声明面积等信息。</p></article><article class="card guide-card"><h3>JSON / NPY / NPZ</h3><p>适合已有实验流程与较大的数组。</p><pre>G: (T,H,W) 或 (T,N) + xy<br>P: (T,H,W) 或 (T,K)<br>time: (T,) 可选<br>mean_green: (T,B) 已分箱</pre><p>NPY 的 G 按图像序列解释。JSON / NPZ 可携带 <code>time</code>、<code>xy</code>、<code>cell_area</code>、<code>kind</code> 与多组视频。无时间时按帧索引处理。</p></article></div></section>
+    <section id="method" class="method-section"><div><div class="eyebrow">BUILT ON YOUR ALGORITHM</div><h2>每一步，都可追溯。</h2><p>直接使用你提供的 solve_A.py 与 bin_pixels.py。文件适配仅转换输入格式，不改变求解公式。</p><a href="python/solve_A.py" download class="text-button">查看求解源码 ↗</a></div><div class="method-formula"><div>F = [ Ḡₜ · Ḡₜ₋₁ · Ḡₜ₋₂ ]</div><strong>P̂ = F · Aᵀ <span>A = L · R</span></strong><p>固定均匀分箱 / SVD 伪逆 / 最小范数基解 / 微小非负修正 / QR 秩检验</p></div></section>
+    <footer><span>LC Mapping Lab · 开放、可复现的液晶概率映射工具</span><span>MIT 开源 · 数据在浏览器内处理</span></footer>
+  </main>
+</div>
+<script src="app.js" defer></script>
+</body></html>

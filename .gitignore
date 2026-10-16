@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+site/source.zip
+site/vendor/
+lc-mapping-lab-source.zip
+test-results/
