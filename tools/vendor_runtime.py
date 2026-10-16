@@ -68,16 +68,33 @@ def verify_content(path: Path) -> None:
 
 
 def fetch(url: str, destination: Path, expected_hash: str | None = None, hash_source: str | None = None) -> dict:
+    if destination.is_file():
+        try:
+            digest = sha256(destination)
+            if expected_hash and digest.lower() != expected_hash.lower():
+                raise ValueError("cached SHA256 mismatch")
+            verify_content(destination)
+            print(f"CACHE {destination.name}: {destination.stat().st_size:,} bytes", flush=True)
+            return {
+                "file": destination.name, "url": url, "bytes": destination.stat().st_size,
+                "sha256": digest,
+                "verified_against_lockfile": bool(expected_hash) and hash_source == "pyodide-lock.json",
+                "hash_source": hash_source if expected_hash else None,
+                "cache_used": True,
+            }
+        except (OSError, ValueError, zipfile.BadZipFile) as error:
+            print(f"CACHE INVALID {destination.name}: {error}", flush=True)
     temporary = destination.with_name(destination.name + ".part")
     last_error = None
     for attempt in range(3):
         try:
+            print(f"GET {destination.name}, attempt {attempt + 1}/3", flush=True)
             request = urllib.request.Request(url, headers={"User-Agent": "LC-Mapping-Lab vendor downloader/1.0"})
-            with urllib.request.urlopen(request, timeout=90) as response, temporary.open("wb") as stream:
+            with urllib.request.urlopen(request, timeout=30) as response, temporary.open("wb") as stream:
                 content_type = response.headers.get("Content-Type", "")
                 if "text/html" in content_type and destination.suffix not in (".html",):
                     raise ValueError(f"Unexpected HTML response: {url}")
-                for chunk in iter(lambda: response.read(1024 * 1024), b""):
+                for chunk in iter(lambda: response.read(64 * 1024), b""):
                     stream.write(chunk)
             digest = sha256(temporary)
             if expected_hash and digest.lower() != expected_hash.lower():
@@ -96,6 +113,7 @@ def fetch(url: str, destination: Path, expected_hash: str | None = None, hash_so
             return result
         except (OSError, ValueError, urllib.error.URLError, zipfile.BadZipFile) as error:
             last_error = error
+            print(f"RETRY {destination.name}, attempt {attempt + 1}/3 failed: {type(error).__name__}: {error}", flush=True)
             if temporary.exists():
                 temporary.unlink()
             if attempt < 2:
@@ -223,6 +241,16 @@ def main() -> None:
     if license_result is None:
         raise RuntimeError("Could not obtain the official Pyodide license; vendoring incomplete")
     results.append(license_result)
+    python_version = str(lock["info"]["python"])
+    if not re.fullmatch(r"\d+\.\d+\.\d+", python_version):
+        raise ValueError(f"Unexpected CPython version: {python_version!r}")
+    python_license = fetch(
+        f"https://raw.githubusercontent.com/python/cpython/v{python_version}/LICENSE",
+        vendor / "LICENSE-PYTHON.txt",
+    )
+    if "PYTHON SOFTWARE FOUNDATION LICENSE" not in (vendor / "LICENSE-PYTHON.txt").read_text(encoding="utf-8"):
+        raise ValueError("Unexpected official CPython license content")
+    results.append(python_license)
 
     license_root = vendor / "licenses"
     materials = {"python_stdlib": extract_license_materials("python_stdlib", vendor / "python_stdlib.zip", license_root)}
@@ -260,7 +288,8 @@ def main() -> None:
         "openpyxl 3.1.5 and et_xmlfile 2.0.0 were checked against SHA256 from the official version-pinned PyPI JSON API; its metadata is preserved.",
         "Core file hashes record the downloaded bytes; the upstream lockfile does not provide hashes for core runtime files.", "",
         "Pyodide is distributed under the Mozilla Public License 2.0; see LICENSE-PYODIDE.txt.",
-        "Python and individual packages retain their own upstream licenses. License texts and wheel metadata are preserved in licenses/ and in the original wheels.",
+        f"CPython {python_version} license and notices are preserved in LICENSE-PYTHON.txt from the matching official CPython source tag.",
+        "Individual packages retain their own upstream licenses. License texts and wheel metadata are preserved in licenses/ and in the original wheels.",
         "See VENDOR-MANIFEST.json for exact sources, hashes, package versions, dependency closure and license metadata.", "",
         "In worker.js load vendor/pyodide/pyodide.js from this site, then pass the absolute directory URL with a trailing slash to loadPyodide({indexURL}).",
         "Use new URL('./vendor/pyodide/', self.location.href).href so deployments under repository subpaths work.",
